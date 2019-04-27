@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Monitoring path status and filesystem
+
+# endless loop
+while true; do
+
+        # check multipath status and save the output into array
+        IFS=$'\n'
+        MULTIPATH=($(multipath -ll | sed '1,3d'))
+        unset IFS
+
+        # read array and check each path status
+        # if the path is down, print error message
+        for i in "${MULTIPATH[@]}"
+        do
+                STATUS=$(echo $i | awk '{print $5}')
+                if [ "$STATUS" == "active" ];
+                then
+                        echo -n "CRITICAL: Path down - "; echo $i | awk '{first=$1; $1=""; print $0;}'
+                        exit 2
+		 else
+                        echo "OK: All paths are up"
+                        exit 0
+                fi
+        done
+
+        # set timer to 6s, multipath status timer is default to 5s
+        sleep 6
+done
