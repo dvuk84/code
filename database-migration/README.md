@@ -16,7 +16,7 @@ What you should expect to see on the screen:
 
 ```
 Starting migration and logging to migration.log. Please don't quit.
-Migrating _blog_www_testdomain_co_uk from db1.server.com to db2.server.com
+-> Migrating _blog_www_testdomain_co_uk from db1.server.com to db2.server.com
 All done.
 ```
 
@@ -25,7 +25,8 @@ What you should expect to see in the log file:
 ```
 Fri Apr 26 18:54:39 2019
 DUMP SUCCESS: /tmp/_blog_www_testdomain_co_uk.sql,testuser_1165753,*CBDA982AAF06B01815D51308930560B075F4B7CE
-IMPORT SUCCESS: Successfully imported _blog_www_testdomain_co_uk and created testuser_1165753
+IMPORT SUCCESS: Successfully imported _blog_www_testdomain_co_uk and created testuser_1165753 on db2.server.com
+DROP SUCCESS: Successfully dropped _blog_www_testdomain_co_uk and testuser_1165753 on db1.server.com
 ```
 
 You will have to update the following in the main section:
