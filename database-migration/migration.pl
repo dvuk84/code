@@ -109,7 +109,7 @@ sub dbimport {
   # import the database
   eval {
     system("mysql --defaults-file=$mysqlauth -h $to_hostname $database < $dumpdir$database.sql");
-    say STDERR "IMPORT SUCCESS: Successfully imported $database and created $user";
+    say STDERR "IMPORT SUCCESS: Successfully imported $database and created $user on $to_hostname";
     1;  
   } or do {
     my $error = $@ || 'Unknown failure';
