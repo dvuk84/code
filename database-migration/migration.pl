@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 # File:        migration.pl
-# Version:     1.0.6
+# Version:     1.0.8
 # Date:        26/4/2019
 # Name:        Dan
 # E-mail:      dvuk84@gmail.com
@@ -64,7 +64,6 @@ sub dbdump {
   } or do {
     my $error = $@ || 'Unknown failure';
     say STDERR "DUMP ERROR: $dumpdir$database.sql,$error";
-    cleanup(1, $dumpdir, $database, $user);
     exit 1; 
   };
 
@@ -115,7 +114,6 @@ sub dbimport {
   } or do {
     my $error = $@ || 'Unknown failure';
     say STDERR "IMPORT ERROR: $database";
-    cleanup(2, $dumpdir, $database, $user);
     exit 1;  
   };
 
@@ -145,14 +143,14 @@ sub dropdb {
 
   # drop database and user
   for (@sql) {
-#    my $query = $connection->prepare($_);
-#    $query->execute() or die "QUERY ERROR: " . $DBI::errstr;
-    say STDOUT $_;
+    my $query = $connection->prepare($_);
+    $query->execute() or die "QUERY ERROR: " . $DBI::errstr;
   }
 
   # end sql connection
   $connection->disconnect();
 
+  say STDERR "DROP SUCCESS: Successfully dropped $database and $user on $from_hostname";
 }
 
 #
@@ -258,27 +256,21 @@ sub gettime {
 }
 
 #
-# Cleanup after error
+# Cleanup
 #
 sub cleanup {
 
   # local vars
-  my ($stage, $dumpdir, $database, $user) = @_;
+  my $sqldump = "$_[0]$_[1].sql";
+  my $mysqlauth = $_[2];
+  
+  # delete the sql dump
+  unlink $sqldump;
+  unlink $mysqlauth;
 
-  # do a cleanup depending on the stage in the code
-  if ($stage == 1) {
-    # delete the sql dump
-    unlink $dumpdir$database;
-  } elsif ($stage == 2 ) {
-    # TODO
-    # drop database on the destination
-    # drop user on the destination
+  say STDERR "CLEAN SUCCESS: Successfully deleted $sqldump and $mysqlauth";
 
-    # delete the sql dump
-    unlink $dumpdir$database;
-  }
 }
-
 ################################################## main ##################################################
 
 # vars
@@ -323,7 +315,7 @@ while (my $row = <$fh_filename>) {
   $database = $row;
   
   # some output for the user
-  say STDOUT "+ Migrating $database from $from_hostname to $to_hostname";
+  say STDOUT "-> Migrating $database from $from_hostname to $to_hostname";
 
   # 1.Take a dump of the database, username and password
   my ($user, $pass) = dbdump($database, $admin_dbuser, $admin_dbpass, $from_hostname, $dumpdir, $ver, $mysqlauth);
@@ -335,8 +327,7 @@ while (my $row = <$fh_filename>) {
   dropdb($admin_dbuser, $admin_dbpass, $from_hostname, $database, $user);
 
   # 4. Cleanup
-  # remove .my.cnf
-  # remove the dump file
+  cleanup($dumpdir, $database, $mysqlauth);
 }
 
 # close file
