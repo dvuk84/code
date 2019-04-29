@@ -288,11 +288,6 @@ open(STDERR, ">>", $logfile);
 # begin logging with a timestamp
 say STDERR "\n$datetime";
 
-# save mysql credentials in a file so that we don't pass them on cli
-open(my $fh_mysqlauth, '>', $mysqlauth) or die "FILE ERROR: Could not open $mysqlauth";
-say $fh_mysqlauth "[client]\nuser=$admin_dbuser\npassword=$admin_dbpass";
-close $fh_mysqlauth;
-
 # get arguments
 GetOptions(
   '--file=s' => \$filename,
@@ -302,6 +297,11 @@ GetOptions(
 
 # do a basic sanity check
 $ver = sanitycheck($filename, $from_hostname, $to_hostname, $admin_dbuser, $admin_dbpass);
+
+# save mysql credentials in a file so that we don't pass them on cli
+open(my $fh_mysqlauth, '>', $mysqlauth) or die "FILE ERROR: Could not open $mysqlauth";
+say $fh_mysqlauth "[client]\nuser=$admin_dbuser\npassword=$admin_dbpass";
+close $fh_mysqlauth;
 
 # open list
 open(my $fh_filename, $filename) or die "FILE ERROR: Could not open $filename"; 
