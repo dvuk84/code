@@ -1,0 +1,9 @@
+# local variables
+region      = "us-east-1"
+cidr        = "10.0.0.0/16"
+instance    = "t2.micro"
+ami         = "ami-04b9e92b5572fa0d1"
+credentials = "aws.credentials"
+subnet      = "10.0.1.0/24"
+keyname     = "kubernetes"
+keypath     = "~/.ssh/id_rsa.pub"
