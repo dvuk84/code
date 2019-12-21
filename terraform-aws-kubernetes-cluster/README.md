@@ -30,7 +30,7 @@ The following will need to be installed.
 sudo apt update
 sudo apt install unzip ansible -y
 ```
-Download Terraform binary package for your platform from the official website https://www.terraform.io/downloads.html
+Download Terraform binary package for Linux from the official website https://www.terraform.io/downloads.html
 
 ```
 unzip terraform*.zip
