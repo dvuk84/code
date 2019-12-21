@@ -33,10 +33,18 @@ resource "aws_security_group" "kubernetes" {
   name                    = "kubernetes"
   vpc_id                  = "${aws_vpc.kubernetes.id}"
 
-  # Inbound traffic 
+  # SSH 
   ingress {
     from_port             = 22
     to_port               = 22
+    protocol              = "tcp"
+    cidr_blocks           = ["0.0.0.0/0"]
+  }
+
+  # Kubernetes
+  ingress {
+    from_port             = 6443
+    to_port               = 6443
     protocol              = "tcp"
     cidr_blocks           = ["0.0.0.0/0"]
   }
