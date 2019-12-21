@@ -84,7 +84,7 @@ Change working dir to ansible-playbooks folder and run Ansible with:
 ansible-playbook setup-cluster.yml -e @group_vars/kubernetes.yml
 ```
 
-Run kubectl on the master, you should see the following:
+Once Ansible has finished deploying, run kubectl on the master. You should see the following:
 
 ```
 # kubectl get nodes
