@@ -1,3 +1,5 @@
+![Image of Yaktocat](https://github.com/dvuk84/code/blob/master/terraform-aws-kubernetes-cluster/vpc-diagram.png)
+
 ## Kubernetes cluster with Terraform/Docker and Ansible on AWS
 
 Terraform plan will build a VPC and spin up three EC2 instances that will be used to create a Kubernetes cluster. Inside the VPC there will be a private subnet and a security group with a few firewall rules to allow the instances to talk to each other. Ansible playbook is used to deploy a Kubernetes cluster with Docker containers. Debian based distros only.
