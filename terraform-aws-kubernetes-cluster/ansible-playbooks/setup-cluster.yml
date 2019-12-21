@@ -1,0 +1,248 @@
+--- # set up kubernetes cluster with docker
+
+##################################
+# INSTALL AND CONFIGURE PACKAGES #
+##################################
+
+- hosts: kubernetes-master:kubernetes-workers
+  become: true
+  tasks:
+
+    # ----- REQUIREMENTS ----- #
+    - name: install required packages
+      apt:
+        name: "{{ item }}"
+        state: latest
+      loop: "{{ packages }}"
+      tags:
+        - all
+        - presetup
+
+    # system config
+    - name: apply system config
+      shell: |
+        /bin/echo "net.bridge.bridge-nf-call-iptables=1" | /usr/bin/tee -a /etc/sysctl.conf
+        /sbin/sysctl -p
+        /sbin/swapoff -a
+      tags:
+        - all
+        - presetup
+
+    # ----- DOCKER ----- #
+
+    # add repo key
+    - name: add docker key
+      apt_key:
+        id: 0EBFCD88
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+      tags:
+        - all
+        - docker
+
+    # add repo
+    - name: add docker repo
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
+        state: present
+      tags:
+        - all
+        - docker
+
+    # install packages
+    - name: install docker packages
+      apt:
+        name: "{{ item }}"
+        state: latest
+      loop: "{{ docker }}"
+      notify:
+        - docker status
+      tags:
+        - all
+        - docker
+
+    # add user to docker group
+    - name: add user to docker group
+      user:
+        name: ubuntu
+        group: docker
+      tags:
+        - all
+        - docker
+
+    # create docker config
+    - name: create docker config file
+      copy:
+        dest: "/etc/docker/daemon.json"
+        content: |
+          {
+            "exec-opts": ["native.cgroupdriver=systemd"],
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "100m"
+            },
+            "storage-driver": "overlay2"
+          }
+        owner: root
+        group: root
+        mode: 0644
+      notify:
+        - docker status
+      tags:
+        - all
+        - docker
+
+    # ----- KUBERNETES ----- #
+
+    # add repo key
+    - name: add kubernetes key
+      apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        state: present
+      tags:
+        - all
+        - kubernetes
+
+    # add repo
+    - name: add kubernetes repo
+      apt_repository:
+        repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+        state: present
+      tags:
+        - all
+        - kubernetes
+
+    # install packages
+    - name: install kubernetes packages
+      apt:
+        name: "{{ item }}"
+        state: latest
+      loop: "{{ kubernetes }}"
+      notify:
+        - kubelet status
+      tags:
+        - all
+        - kubernetes
+
+  # ----- HANDLERS ----- #
+
+  handlers:
+    - name: docker status
+      service:
+        name: docker
+        daemon_reload: yes
+        state: restarted
+
+    - name: kubelet status
+      service:
+        name: kubelet
+        daemon_reload: yes
+        state: restarted
+
+#################################
+# INITIALISE KUBERNETES CLUSTER #
+#################################
+
+- hosts: kubernetes-master
+  become: true
+  tasks:
+
+    # initialise cluster
+    - name: initialise kubernetes cluster
+      shell: |
+        if [ ! -d "$HOME/.kube" ]; then
+          /usr/bin/kubeadm init --pod-network-cidr=10.244.0.0/16 --ignore-preflight-errors=NumCPU
+        fi
+      notify:
+        - kubelet status
+      tags:
+        - master
+        - kubernetes
+
+    # kubernetes config
+    - name: apply kubernetes config
+      shell: |
+        if [ ! -d "$HOME/.kube" ]; then
+          /bin/mkdir -p $HOME/.kube
+          /bin/cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+          /bin/chown $(id -u):$(id -g) $HOME/.kube/config
+          /bin/sed -i 's/cgroupfs/systemd/g' /var/lib/kubelet/kubeadm-flags.env
+        fi
+      tags:
+        - master
+        - kubernetes
+
+    # kubernetes networking
+    - name: set up flannel network provider
+      shell: |
+        if [ ! -f "$HOME/.kube/kube-flannel.yml" ]; then
+          /usr/bin/curl -s -o $HOME/.kube/kube-flannel.yml https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+          /bin/cat $HOME/.kube/kube-flannel.yml | /usr/bin/kubectl apply -f -
+        fi
+      notify:
+        - kubelet status
+      tags:
+        - master
+        - kubernetes
+
+    # generate join command
+    - name: generate join command
+      shell: |
+        /usr/bin/kubeadm token create --print-join-command
+      register: join_cluster
+      tags:
+        - master
+        - kubernetes
+
+    # save command to local file
+    - name: save command to local file
+      local_action: copy content="{{ join_cluster.stdout_lines[0] }}" dest="./join-cluster.sh"
+      tags:
+        - master
+        - kubernetes
+
+  # ----- HANDLERS ----- #
+
+  handlers:
+    - name: kubelet status
+      service:
+        name: kubelet
+        daemon_reload: yes
+        state: restarted
+
+###########################
+# JOIN KUBERNETES CLUSTER #
+###########################
+
+- hosts: kubernetes-workers
+  become: true
+  tasks:
+
+    # create join script
+    - name: copy join command to worker nodes 
+      copy:
+        src: join-cluster.sh
+        dest: "/tmp/join-cluster.sh"
+        owner: ubuntu
+        group: ubuntu
+        mode: 0700
+      tags:
+        - workers
+        - kubernetes
+
+    # join cluster
+    - name: join cluster
+      shell: |
+        /tmp/join-cluster.sh
+        /bin/rm -rf /tmp/join-cluster.sh
+      tags:
+        - workers
+        - kubernetes
+
+    # cleanup
+    - name: remove stale script
+      local_action: file path=./join-cluster.sh state=absent
+      tags:
+        - workers
+        - cleanup
+        - kubernetes

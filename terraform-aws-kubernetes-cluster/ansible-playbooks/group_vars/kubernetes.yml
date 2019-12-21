@@ -1,0 +1,16 @@
+packages:
+- apt-transport-https
+- ca-certificates
+- gnupg-agent
+- curl
+- software-properties-common
+
+docker:
+- docker-ce
+- docker-ce-cli
+- containerd.io
+
+kubernetes:
+- kubectl
+- kubeadm
+- kubelet
