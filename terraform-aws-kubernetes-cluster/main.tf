@@ -33,20 +33,19 @@ resource "aws_security_group" "kubernetes" {
   name                    = "kubernetes"
   vpc_id                  = "${aws_vpc.kubernetes.id}"
 
-  # SSH 
-  ingress {
-    from_port             = 22
-    to_port               = 22
-    protocol              = "tcp"
-    cidr_blocks           = ["0.0.0.0/0"]
-  }
+  # inbound traffic
+  dynamic "ingress" {
+    for_each = [ for s in var.inbound_ports: {
+      from_port           = s.from_port
+      to_port             = s.to_port
+    }]
 
-  # Kubernetes
-  ingress {
-    from_port             = 6443
-    to_port               = 6443
-    protocol              = "tcp"
-    cidr_blocks           = ["0.0.0.0/0"]
+    content {
+      from_port           = ingress.value.from_port
+      to_port             = ingress.value.to_port
+      protocol            = "tcp"
+      cidr_blocks         = ["0.0.0.0/0"]
+    }
   }
 
   # Outbound traffic
